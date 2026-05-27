@@ -546,44 +546,6 @@ def adjust_result(event_id):
     return render_template('adjust_result.html', event=event, slot_data=slot_data, names=names, vote_url=vote_url)
 
 
-@app.route('/team')
-def team():
-    authenticated = get_service() is not None
-    return render_template('team.html', authenticated=authenticated)
-
-
-@app.route('/api/team-slots', methods=['POST'])
-def api_team_slots():
-    service = get_service()
-    if not service:
-        return jsonify({'error': '認証が必要です'}), 401
-
-    data = request.get_json()
-    raw_ids = data.get('calendar_ids', '')
-    days = int(data.get('days', 7))
-
-    calendar_ids = ['primary']
-    for cid in raw_ids.split('\n'):
-        cid = cid.strip()
-        if cid and cid not in calendar_ids:
-            calendar_ids.append(cid)
-
-    try:
-        slots = get_free_slots(service, calendar_ids=calendar_ids, days=days)
-        # 候補を LINE/Slack に貼れる形式にも変換
-        text_lines = []
-        prev_date = None
-        for s in slots[:20]:
-            if s['date'] != prev_date:
-                text_lines.append(f"\n■ {s['date_label']}")
-                prev_date = s['date']
-            text_lines.append(f"  ・{s['time']}〜")
-        copy_text = '\n'.join(text_lines).strip()
-
-        return jsonify({'slots': slots[:40], 'copy_text': copy_text})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 if __name__ == '__main__':
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
