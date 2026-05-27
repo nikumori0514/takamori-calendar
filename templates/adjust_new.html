@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}候補日調整を作成{% endblock %}
+{% block extra_style %}
+.duration-group { display:flex; gap:12px; margin-top:4px; }
+.duration-btn { flex:1; padding:12px; border-radius:8px; border:2px solid #e0e0e0;
+  background:#fff; cursor:pointer; font-size:14px; text-align:center; transition:all 0.15s; }
+.duration-btn:hover { border-color:#aaa; }
+.duration-btn.selected { border-color:#1a1a1a; background:#1a1a1a; color:#fff; }
+.share-box { background:#f0f7ff; border:1px solid #b3d4f7; border-radius:8px;
+  padding:20px; margin-top:20px; }
+.share-url { font-size:13px; color:#1a73e8; word-break:break-all;
+  background:#fff; border:1px solid #ddd; border-radius:6px; padding:10px; margin:10px 0; }
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="font-size:20px;margin-bottom:6px;">候補日調整を作成</h2>
+  <p style="font-size:13px;color:#888;margin-bottom:24px;">高森さんの空き時間から候補を自動生成してURLを発行します</p>
+
+  {% if share_url %}
+  <div class="share-box">
+    <p style="font-weight:700;margin-bottom:8px;">✅ 作成完了：「{{ title }}」</p>
+    <p style="font-size:13px;color:#555;margin-bottom:4px;">このURLを参加者に送ってください：</p>
+    <div class="share-url">{{ share_url }}</div>
+    <button onclick="navigator.clipboard.writeText('{{ share_url }}').then(()=>alert('コピーしました'))"
+      class="btn btn-primary" style="margin-top:4px;">URLをコピー</button>
+    <a href="{{ share_url }}" target="_blank" style="margin-left:12px;font-size:13px;color:#1a73e8;">
+      ページを確認する →
+    </a>
+  </div>
+  <hr style="margin:24px 0;border:none;border-top:1px solid #eee;">
+  <p style="font-size:13px;color:#888;">続けて別の調整を作成することもできます。</p>
+  {% endif %}
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="form-group">
+      <label>タイトル *</label>
+      <input type="text" name="title" placeholder="例：6月の打ち合わせ候補" style="width:100%;box-sizing:border-box;">
+    </div>
+
+    <div class="form-group">
+      <label>所要時間 *</label>
+      <div class="duration-group">
+        <label style="all:unset"><input type="radio" name="duration" value="30" style="display:none" id="d30">
+          <div class="duration-btn" onclick="document.getElementById('d30').checked=true;selectDur(this)">30分</div>
+        </label>
+        <label style="all:unset"><input type="radio" name="duration" value="60" checked style="display:none" id="d60">
+          <div class="duration-btn selected" onclick="document.getElementById('d60').checked=true;selectDur(this)">60分</div>
+        </label>
+        <label style="all:unset"><input type="radio" name="duration" value="90" style="display:none" id="d90">
+          <div class="duration-btn" onclick="document.getElementById('d90').checked=true;selectDur(this)">90分</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>確認する期間</label>
+      <select name="days" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+        <option value="7">1週間</option>
+        <option value="14" selected>2週間</option>
+        <option value="21">3週間</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px;">
+      候補URLを発行する
+    </button>
+  </form>
+</div>
+
+<script>
+function selectDur(el) {
+  document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}{{ event['title'] }} — 候補日回答{% endblock %}
+{% block extra_style %}
+.slot-row { display:flex; align-items:center; padding:10px 14px; border-radius:8px;
+  margin:4px 0; border:2px solid #e0e0e0; cursor:pointer; transition:all 0.15s; user-select:none; }
+.slot-row:hover { border-color:#aaa; background:#f9f9f9; }
+.slot-row.checked { border-color:#1a1a1a; background:#1a1a1a; color:#fff; }
+.slot-row input { display:none; }
+.date-label { font-size:13px; font-weight:700; color:#555; margin:16px 0 6px; }
+.slot-row.checked .date-label { color:#fff; }
+.respondents { font-size:12px; color:#aaa; margin-left:auto; }
+.slot-row.checked .respondents { color:#ccc; }
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="font-size:20px;margin-bottom:4px;">{{ event['title'] }}</h2>
+  <p style="font-size:13px;color:#888;margin-bottom:20px;">
+    所要時間：{{ event['duration'] }}分 ／
+    都合のよい時間をすべて選んでください
+  </p>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% set slots = event['slots'] | from_json %}
+  {% set res_names = responses | length %}
+
+  <form method="POST">
+    <div class="form-group">
+      <label>お名前 *</label>
+      <input type="text" name="name" placeholder="例：山田 太郎" style="width:100%;box-sizing:border-box;">
+    </div>
+
+    <p style="font-size:14px;font-weight:700;margin:20px 0 4px;">候補日時（複数選択可）</p>
+
+    {% set ns = namespace(prev_date='') %}
+    {% for slot in slots %}
+      {% set dt_str = slot %}
+      {% set date_part = slot[:10] %}
+      {% if date_part != ns.prev_date %}
+        {% set ns.prev_date = date_part %}
+        <div class="date-label" id="d-{{ date_part }}"></div>
+      {% endif %}
+      <label class="slot-row" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked;return false;">
+        <input type="checkbox" name="slots" value="{{ slot }}">
+        <span class="slot-time" data-iso="{{ slot }}" data-dur="{{ event['duration'] }}"></span>
+        <span class="respondents" data-iso="{{ slot }}">
+          {% if responses %}
+            {% set cnt = namespace(n=0) %}
+            {% for r in responses %}
+              {% if slot in (r['slots'] | from_json) %}{% set cnt.n = cnt.n + 1 %}{% endif %}
+            {% endfor %}
+            {{ cnt.n }}/{{ res_names }}人
+          {% endif %}
+        </span>
+      </label>
+    {% endfor %}
+
+    <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;margin-top:20px;">
+      回答を送信する
+    </button>
+  </form>
+
+  {% if responses %}
+  <p style="font-size:13px;color:#888;margin-top:16px;text-align:center;">
+    現在 {{ res_names }}人が回答済み ／
+    <a href="{{ request.path }}/result" style="color:#1a73e8;">集計結果を見る →</a>
+  </p>
+  {% endif %}
+</div>
+
+<script>
+const TZ = 'Asia/Tokyo';
+const WEEKDAY = ['日','月','火','水','木','金','土'];
+
+// 日付ラベルとスロット時刻を日本語で描画
+document.querySelectorAll('.slot-time').forEach(el => {
+  const iso = el.dataset.iso;
+  const dur = parseInt(el.dataset.dur);
+  const dt = new Date(iso);
+  const end = new Date(dt.getTime() + dur * 60000);
+  const fmt = d => d.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', timeZone:TZ});
+  const fmtDate = d => {
+    const wd = WEEKDAY[d.toLocaleDateString('ja-JP',{weekday:'narrow',timeZone:TZ}).slice(-1).charCodeAt(0) < 200
+      ? 0 : ['日','月','火','水','木','金','土'].indexOf(d.toLocaleDateString('ja-JP',{weekday:'short',timeZone:TZ}).slice(-1))];
+    const m = d.toLocaleDateString('ja-JP',{month:'numeric',timeZone:TZ}).replace('月','');
+    const day = d.toLocaleDateString('ja-JP',{day:'numeric',timeZone:TZ}).replace('日','');
+    const wdStr = d.toLocaleDateString('ja-JP',{weekday:'short',timeZone:TZ});
+    return `${m}/${day}(${wdStr.slice(-1)})`;
+  };
+  el.textContent = `${fmtDate(dt)} ${fmt(dt)}〜${fmt(end)}`;
+});
+
+// 日付ラベルを描画
+const seen = new Set();
+document.querySelectorAll('.slot-time').forEach(el => {
+  const dt = new Date(el.dataset.iso);
+  const dateKey = dt.toLocaleDateString('ja-JP',{timeZone:TZ});
+  const labelId = 'd-' + el.dataset.iso.slice(0,10);
+  const labelEl = document.getElementById(labelId);
+  if (labelEl && !seen.has(labelId)) {
+    seen.add(labelId);
+    const m = dt.toLocaleDateString('ja-JP',{month:'numeric',timeZone:TZ}).replace('月','');
+    const day = dt.toLocaleDateString('ja-JP',{day:'numeric',timeZone:TZ}).replace('日','');
+    const wd = dt.toLocaleDateString('ja-JP',{weekday:'short',timeZone:TZ});
+    labelEl.textContent = `${m}月${day}日(${wd.slice(-1)})`;
+  }
+});
+</script>
+{% endblock %}

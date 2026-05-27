@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}{{ event['title'] }} — 集計結果{% endblock %}
+{% block extra_style %}
+.result-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+.result-table th { background:#1a1a1a; color:#fff; padding:8px 10px; text-align:center; white-space:nowrap; }
+.result-table td { padding:8px 10px; border-bottom:1px solid #eee; text-align:center; white-space:nowrap; }
+.result-table tr.all-ok td { background:#e8f5e9; font-weight:700; }
+.result-table td.time-col { text-align:left; }
+.circle { color:#22a; font-size:16px; }
+.count-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:700; }
+.all-badge { background:#2e7d32; color:#fff; }
+.some-badge { background:#e0e0e0; color:#555; }
+.share-box { background:#f5f5f5; border-radius:8px; padding:14px; margin-bottom:20px; }
+.share-url { font-size:12px; color:#1a73e8; word-break:break-all; }
+{% endblock %}
+{% block content %}
+<div class="card" style="max-width:900px;">
+  <h2 style="font-size:20px;margin-bottom:4px;">{{ event['title'] }}</h2>
+  <p style="font-size:13px;color:#888;margin-bottom:16px;">所要時間：{{ event['duration'] }}分 ／ {{ names|length }}人回答済み</p>
+
+  <div class="share-box">
+    <p style="font-size:13px;color:#555;margin-bottom:4px;">回答URLを参加者に共有：</p>
+    <p class="share-url">{{ vote_url }}</p>
+    <button onclick="navigator.clipboard.writeText('{{ vote_url }}').then(()=>alert('コピーしました'))"
+      style="margin-top:8px;padding:6px 16px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:13px;">
+      URLをコピー
+    </button>
+  </div>
+
+  {% if names|length == 0 %}
+  <p style="color:#888;font-size:14px;">まだ回答がありません。</p>
+  {% else %}
+
+  {% set all_count = names|length %}
+  {% set grouped = {} %}
+  {% for s in slot_data %}
+    {% set _ = grouped.setdefault(s.date_label, []) %}
+    {% set _ = grouped[s.date_label].append(s) %}
+  {% endfor %}
+
+  <div style="overflow-x:auto;">
+    <table class="result-table">
+      <thead>
+        <tr>
+          <th class="time-col">日時</th>
+          {% for name in names %}
+          <th>{{ name }}</th>
+          {% endfor %}
+          <th>参加可能</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set prev_date = namespace(v='') %}
+        {% for s in slot_data %}
+          {% if s.date_label != prev_date.v %}
+            {% set prev_date.v = s.date_label %}
+            <tr>
+              <td colspan="{{ names|length + 2 }}"
+                style="background:#f5f5f5;font-weight:700;font-size:12px;color:#555;padding:6px 10px;">
+                {{ s.date_label }}
+              </td>
+            </tr>
+          {% endif %}
+          <tr{% if s.all %} class="all-ok"{% endif %}>
+            <td class="time-col">{{ s.label }}</td>
+            {% for name in names %}
+            <td>
+              {% if name in s.available %}
+              <span class="circle">●</span>
+              {% else %}
+              <span style="color:#ddd;">―</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+            <td>
+              {% if s.all %}
+              <span class="count-badge all-badge">全員OK</span>
+              {% elif s.count > 0 %}
+              <span class="count-badge some-badge">{{ s.count }}/{{ all_count }}</span>
+              {% else %}
+              <span style="color:#ddd;font-size:12px;">―</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% endif %}
+
+  <div style="margin-top:20px;font-size:13px;">
+    <a href="{{ url_for('adjust_vote', event_id=event['id']) }}" style="color:#1a73e8;">← 回答ページに戻る</a>
+    <span style="margin:0 12px;color:#ddd;">|</span>
+    <a href="{{ url_for('adjust_new') }}" style="color:#1a73e8;">新しい調整を作成する</a>
+  </div>
+</div>
+{% endblock %}

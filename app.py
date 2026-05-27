@@ -2,18 +2,21 @@ import os
 import json
 import base64
 import tempfile
+import sqlite3
+import uuid
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from urllib.parse import quote
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'takamori-calendar-secret-2026')
+app.jinja_env.filters['from_json'] = json.loads
 
 _tmp = tempfile.gettempdir()
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credentials.json')
@@ -44,6 +47,39 @@ OWNER_NAME = '高森 雄大'
 OWNER_EMAIL = 'k.takamori19860514@gmail.com'
 
 WEEKDAY_JA = ['月', '火', '水', '木', '金', '土', '日']
+
+DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'adjust.db'))
+
+
+def get_db():
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    return db
+
+
+def init_db():
+    db = get_db()
+    db.executescript('''
+        CREATE TABLE IF NOT EXISTS events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            slots TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS responses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            slots TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+    ''')
+    db.commit()
+    db.close()
+
+
+init_db()
 
 
 def get_service():
@@ -403,6 +439,111 @@ def api_book():
         return jsonify({'success': True, 'event_id': created['id']})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/adjust/new', methods=['GET', 'POST'])
+def adjust_new():
+    service = get_service()
+    if not service:
+        return redirect(url_for('auth_login'))
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        duration = int(request.form.get('duration', 60))
+        days = int(request.form.get('days', 14))
+        if not title:
+            return render_template('adjust_new.html', error='タイトルを入力してください')
+
+        slots = get_free_slots(service, slot_minutes=duration, days=days)
+        slot_times = [s['start'] for s in slots]
+
+        event_id = uuid.uuid4().hex[:10]
+        tz = ZoneInfo(TIMEZONE)
+        now = datetime.now(tz).isoformat()
+
+        db = get_db()
+        db.execute(
+            'INSERT INTO events (id, title, duration, slots, created_at) VALUES (?,?,?,?,?)',
+            (event_id, title, duration, json.dumps(slot_times), now)
+        )
+        db.commit()
+        db.close()
+
+        share_url = url_for('adjust_vote', event_id=event_id, _external=True)
+        return render_template('adjust_new.html', share_url=share_url, title=title)
+
+    return render_template('adjust_new.html')
+
+
+@app.route('/adjust/<event_id>', methods=['GET', 'POST'])
+def adjust_vote(event_id):
+    db = get_db()
+    event = db.execute('SELECT * FROM events WHERE id=?', (event_id,)).fetchone()
+    if not event:
+        db.close()
+        abort(404)
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        selected = request.form.getlist('slots')
+        if not name:
+            responses = db.execute('SELECT * FROM responses WHERE event_id=?', (event_id,)).fetchall()
+            db.close()
+            return render_template('adjust_vote.html', event=event, responses=responses, error='お名前を入力してください')
+
+        tz = ZoneInfo(TIMEZONE)
+        now = datetime.now(tz).isoformat()
+        db.execute(
+            'INSERT INTO responses (event_id, name, slots, created_at) VALUES (?,?,?,?)',
+            (event_id, name, json.dumps(selected), now)
+        )
+        db.commit()
+        db.close()
+        return redirect(url_for('adjust_result', event_id=event_id))
+
+    responses = db.execute('SELECT * FROM responses WHERE event_id=?', (event_id,)).fetchall()
+    db.close()
+    return render_template('adjust_vote.html', event=event, responses=responses)
+
+
+@app.route('/adjust/<event_id>/result')
+def adjust_result(event_id):
+    db = get_db()
+    event = db.execute('SELECT * FROM events WHERE id=?', (event_id,)).fetchone()
+    if not event:
+        db.close()
+        abort(404)
+    responses = db.execute('SELECT * FROM responses WHERE event_id=?', (event_id,)).fetchall()
+    db.close()
+
+    slots = json.loads(event['slots'])
+    parsed_responses = []
+    for r in responses:
+        parsed_responses.append({
+            'name': r['name'],
+            'slots': set(json.loads(r['slots']))
+        })
+
+    tz = ZoneInfo(TIMEZONE)
+    slot_data = []
+    for s in slots:
+        dt = datetime.fromisoformat(s).astimezone(tz)
+        end_dt = dt + timedelta(minutes=event['duration'])
+        wd = WEEKDAY_JA[dt.weekday()]
+        available = [r['name'] for r in parsed_responses if s in r['slots']]
+        slot_data.append({
+            'start': s,
+            'label': dt.strftime(f'%m/%d({wd}) %H:%M') + '〜' + end_dt.strftime('%H:%M'),
+            'date_label': dt.strftime(f'%m月%d日({wd})'),
+            'date': dt.strftime('%Y-%m-%d'),
+            'available': available,
+            'count': len(available),
+            'all': len(parsed_responses) > 0 and len(available) == len(parsed_responses),
+        })
+
+    names = [r['name'] for r in parsed_responses]
+    vote_url = url_for('adjust_vote', event_id=event_id, _external=True)
+    return render_template('adjust_result.html', event=event, slot_data=slot_data, names=names, vote_url=vote_url)
 
 
 @app.route('/team')
