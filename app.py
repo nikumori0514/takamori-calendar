@@ -238,7 +238,7 @@ def get_free_slots(service, calendar_ids=None, days=DISPLAY_DAYS, slot_minutes=S
     slots = []
     current = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     end_date = now + timedelta(days=days)
-    business_end_time = lambda d: d.replace(hour=BUSINESS_END, minute=0, second=0, microsecond=0)
+    business_end_time = lambda d: d.replace(hour=BUSINESS_END, minute=30, second=0, microsecond=0)
 
     while current < end_date:
         if current.weekday() >= 5:
