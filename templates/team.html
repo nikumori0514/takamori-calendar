@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}チーム調整 — 日程調整ツール{% endblock %}
+{% block extra_style %}
+.result-slot { padding:6px 12px; margin:3px 0; background:#f0f0f0; border-radius:6px; font-size:14px; }
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="font-size:20px;margin-bottom:6px;">チーム空き時間調整</h2>
+  <p style="font-size:13px;color:#888;margin-bottom:20px;">
+    複数人のGoogleカレンダーIDを入力すると、全員が空いている時間帯を抽出します。<br>
+    カレンダーIDは「Googleカレンダー → 設定 → カレンダーを統合」で確認できます。
+  </p>
+
+  {% if not authenticated %}
+  <div class="alert alert-error" style="margin-bottom:16px;">
+    ⚠️ Googleカレンダー未接続です。<a href="/auth/login" style="color:#dc2626;font-weight:600;">ログイン</a>してください。
+  </div>
+  {% endif %}
+
+  <div class="form-group">
+    <label>追加するカレンダーID（1行1件・自分のカレンダーは自動で含まれます）</label>
+    <textarea id="cal-ids" rows="4"
+      placeholder="例：&#10;member-a@example.com&#10;member-b@example.com"></textarea>
+  </div>
+  <div class="form-group">
+    <label>何日分を確認するか</label>
+    <select id="days">
+      <option value="5">5日間</option>
+      <option value="7" selected>1週間</option>
+      <option value="14">2週間</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" onclick="searchSlots()">空き時間を検索</button>
+</div>
+
+<div id="result-section" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:16px;">全員が空いている時間帯</h3>
+      <button class="btn btn-secondary" onclick="copyText()" style="font-size:13px;">📋 コピー</button>
+    </div>
+    <div id="slots-list"></div>
+  </div>
+  <div class="card" style="background:#1a1a1a;color:#fff;">
+    <p style="font-size:12px;color:#999;margin-bottom:8px;">LINE/Slackに貼り付け用テキスト</p>
+    <pre id="copy-text" style="font-size:13px;line-height:1.8;white-space:pre-wrap;"></pre>
+  </div>
+</div>
+
+<div id="error-msg" style="display:none;" class="card">
+  <div class="alert alert-error" id="error-text"></div>
+</div>
+
+<script>
+async function searchSlots() {
+  const calIds = document.getElementById('cal-ids').value;
+  const days = document.getElementById('days').value;
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
+
+  const res = await fetch('/api/team-slots', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({calendar_ids: calIds, days: parseInt(days)})
+  });
+  const data = await res.json();
+
+  if (data.error) {
+    document.getElementById('error-text').textContent = 'エラー: ' + data.error;
+    document.getElementById('error-msg').style.display = 'block';
+    return;
+  }
+
+  const list = document.getElementById('slots-list');
+  list.innerHTML = '';
+  let prevDate = null;
+  if (data.slots.length === 0) {
+    list.innerHTML = '<p style="color:#888;font-size:14px;">該当する空き時間が見つかりませんでした。</p>';
+  } else {
+    data.slots.forEach(s => {
+      if (s.date !== prevDate) {
+        const h = document.createElement('div');
+        h.style.cssText = 'font-weight:700;font-size:13px;color:#555;margin:12px 0 6px;';
+        h.textContent = s.date_label || s.label.split(' ')[0];
+        list.appendChild(h);
+        prevDate = s.date;
+      }
+      const d = document.createElement('div');
+      d.className = 'result-slot';
+      d.textContent = s.label;
+      list.appendChild(d);
+    });
+  }
+
+  document.getElementById('copy-text').textContent = data.copy_text || '';
+  document.getElementById('result-section').style.display = 'block';
+}
+
+function copyText() {
+  const text = document.getElementById('copy-text').textContent;
+  navigator.clipboard.writeText(text).then(() => alert('コピーしました'));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}{{ owner }} の予約 — 日程調整{% endblock %}
+{% block extra_style %}
+.slot-btn { display:inline-block; padding:8px 14px; margin:4px; border-radius:8px;
+  background:#f0f0f0; border:2px solid transparent; cursor:pointer; font-size:14px; }
+.slot-btn:hover { background:#e0e0e0; }
+.slot-btn.selected { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+.date-section { margin-bottom:20px; }
+.date-label { font-size:14px; font-weight:700; color:#555; margin-bottom:8px; }
+#confirm-form { display:none; }
+.meeting-type-group { display:flex; gap:12px; margin-top:4px; }
+.meeting-type-btn { flex:1; padding:12px; border-radius:8px; border:2px solid #e0e0e0;
+  background:#fff; cursor:pointer; font-size:14px; text-align:center; transition:all 0.15s; }
+.meeting-type-btn:hover { border-color:#aaa; }
+.meeting-type-btn.selected { border-color:#1a1a1a; background:#1a1a1a; color:#fff; }
+{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2 style="font-size:20px;margin-bottom:6px;">{{ owner }} との日程調整</h2>
+  <p style="font-size:13px;color:#888;margin-bottom:20px;">ご都合のよい日時を1つ選んでください（30分単位・平日9〜19時）</p>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if not grouped %}
+  <p style="color:#888;font-size:14px;">現在ご案内できる空き時間がありません。後日またご確認ください。</p>
+  {% else %}
+
+  <div id="slot-section">
+    {% for date, info in grouped.items() %}
+    <div class="date-section">
+      <div class="date-label">{{ info.label }}</div>
+      <div>
+        {% for slot in info.slots %}
+        <button class="slot-btn"
+          data-start="{{ slot.start }}"
+          data-end="{{ slot.end }}"
+          data-label="{{ slot.label }}"
+          onclick="selectSlot(this)">
+          {{ slot.time }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div id="selected-info" style="display:none;margin:20px 0;padding:14px;background:#f9f9f9;border-radius:8px;">
+    <span style="font-size:13px;color:#555;">選択中：</span>
+    <strong id="selected-label" style="font-size:15px;"></strong>
+    <button onclick="clearSlot()" style="margin-left:12px;font-size:12px;color:#888;background:none;border:none;cursor:pointer;">変更する</button>
+  </div>
+
+  <div id="confirm-form">
+    <hr style="margin:20px 0;border:none;border-top:1px solid #eee;">
+    <h3 style="font-size:16px;margin-bottom:16px;">お名前・ご連絡先を入力してください</h3>
+    <div class="form-group">
+      <label>お名前 *</label>
+      <input type="text" id="f-name" placeholder="例：山田 太郎">
+    </div>
+    <div class="form-group">
+      <label>メールアドレス *</label>
+      <input type="email" id="f-email" placeholder="例：taro@example.com">
+    </div>
+    <div class="form-group">
+      <label>ミーティング形式 *</label>
+      <div class="meeting-type-group">
+        <button type="button" class="meeting-type-btn" id="btn-online" onclick="selectMeetingType('online')">
+          オンライン（Google Meet）
+        </button>
+        <button type="button" class="meeting-type-btn" id="btn-offline" onclick="selectMeetingType('offline')">
+          対面
+        </button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>目的・ご用件</label>
+      <textarea id="f-purpose" rows="3" placeholder="例：事業連携のご相談"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="submitBooking()" style="width:100%;padding:14px;">
+      この日時で予約する
+    </button>
+  </div>
+
+  <div id="success-msg" style="display:none;" class="alert alert-success">
+    予約が完了しました。確認メールをお送りしています。
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+let selectedStart = null, selectedEnd = null, selectedMeetingType = null;
+
+function selectSlot(btn) {
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedStart = btn.dataset.start;
+  selectedEnd = btn.dataset.end;
+  document.getElementById('selected-label').textContent = btn.dataset.label;
+  document.getElementById('selected-info').style.display = 'block';
+  document.getElementById('confirm-form').style.display = 'block';
+}
+
+function clearSlot() {
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+  selectedStart = null; selectedEnd = null;
+  document.getElementById('selected-info').style.display = 'none';
+  document.getElementById('confirm-form').style.display = 'none';
+}
+
+function selectMeetingType(type) {
+  selectedMeetingType = type;
+  document.getElementById('btn-online').classList.toggle('selected', type === 'online');
+  document.getElementById('btn-offline').classList.toggle('selected', type === 'offline');
+}
+
+async function submitBooking() {
+  const name = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const purpose = document.getElementById('f-purpose').value.trim();
+  if (!name || !email) { alert('お名前とメールアドレスを入力してください'); return; }
+  if (!selectedStart) { alert('日時を選択してください'); return; }
+  if (!selectedMeetingType) { alert('ミーティング形式を選択してください'); return; }
+
+  const res = await fetch('/api/book', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({start: selectedStart, end: selectedEnd, name, email, purpose, meeting_type: selectedMeetingType})
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('slot-section').style.display = 'none';
+    document.getElementById('selected-info').style.display = 'none';
+    document.getElementById('confirm-form').style.display = 'none';
+    document.getElementById('success-msg').style.display = 'block';
+  } else {
+    alert('エラーが発生しました: ' + (data.error || '不明なエラー'));
+  }
+}
+</script>
+{% endblock %}

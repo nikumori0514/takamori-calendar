@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}ホーム — 日程調整ツール{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="font-size:22px;margin-bottom:8px;">高森 雄大 — 日程調整ツール</h2>
+  <p style="color:#666;font-size:14px;margin-bottom:24px;">Googleカレンダーと連携した日程調整・チーム空き時間確認ツールです。</p>
+
+  {% if authenticated %}
+  <div class="alert alert-success" style="margin-bottom:24px;">✅ Googleカレンダーと接続済みです</div>
+  {% else %}
+  <div class="alert alert-error" style="margin-bottom:24px;">⚠️ Googleカレンダーと未接続です。まずログインしてください。</div>
+  <a href="/auth/login" class="btn btn-primary" style="margin-bottom:24px;">Googleでログイン</a>
+  {% endif %}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div style="background:#f9f9f9;border-radius:10px;padding:20px;">
+      <div style="font-size:28px;margin-bottom:8px;">🔗</div>
+      <h3 style="font-size:16px;margin-bottom:8px;">外部向け予約ページ</h3>
+      <p style="font-size:13px;color:#666;margin-bottom:16px;">このURLを相手に送ると、空き時間から日程を選んで予約できます。Googleカレンダーに自動登録されます。</p>
+      <a href="/booking" class="btn btn-secondary" style="font-size:13px;">予約ページを開く →</a>
+    </div>
+    <div style="background:#f9f9f9;border-radius:10px;padding:20px;">
+      <div style="font-size:28px;margin-bottom:8px;">👥</div>
+      <h3 style="font-size:16px;margin-bottom:8px;">チーム空き時間調整</h3>
+      <p style="font-size:13px;color:#666;margin-bottom:16px;">複数人のGoogleカレンダーを突き合わせて、全員が空いている時間帯を自動抽出します。</p>
+      <a href="/team" class="btn btn-secondary" style="font-size:13px;">チーム調整を開く →</a>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="background:#1a1a1a;color:#fff;">
+  <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">予約ページURLをコピーして共有</h3>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <input id="booking-url" value="{{ request.host_url }}booking" readonly
+      style="background:#333;color:#fff;border-color:#555;flex:1;">
+    <button class="btn btn-secondary" onclick="copyUrl()" style="white-space:nowrap;">コピー</button>
+  </div>
+</div>
+
+<script>
+function copyUrl() {
+  const el = document.getElementById('booking-url');
+  navigator.clipboard.writeText(el.value).then(() => {
+    alert('URLをコピーしました');
+  });
+}
+</script>
+{% endblock %}
