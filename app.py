@@ -205,7 +205,7 @@ def parse_dt(s):
     return dt.astimezone(ZoneInfo(TIMEZONE))
 
 
-def get_free_slots(service, calendar_ids=None, days=DISPLAY_DAYS):
+def get_free_slots(service, calendar_ids=None, days=DISPLAY_DAYS, slot_minutes=SLOT_MINUTES):
     tz = ZoneInfo(TIMEZONE)
     now = datetime.now(tz)
     time_min = now.isoformat()
@@ -238,6 +238,7 @@ def get_free_slots(service, calendar_ids=None, days=DISPLAY_DAYS):
     slots = []
     current = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     end_date = now + timedelta(days=days)
+    business_end_time = lambda d: d.replace(hour=BUSINESS_END, minute=0, second=0, microsecond=0)
 
     while current < end_date:
         if current.weekday() >= 5:
@@ -252,7 +253,12 @@ def get_free_slots(service, calendar_ids=None, days=DISPLAY_DAYS):
                 hour=BUSINESS_START, minute=0, second=0, microsecond=0)
             continue
 
-        slot_end = current + timedelta(minutes=SLOT_MINUTES)
+        slot_end = current + timedelta(minutes=slot_minutes)
+        # 終了時刻が営業時間を超えるスロットはスキップ（30分刻みで次へ）
+        if slot_end > business_end_time(current):
+            current += timedelta(minutes=30)
+            continue
+
         is_free = all(
             not (current < b_end and slot_end > b_start)
             for b_start, b_end in merged
@@ -269,9 +275,30 @@ def get_free_slots(service, calendar_ids=None, days=DISPLAY_DAYS):
                 'time': current.strftime('%H:%M'),
             })
 
-        current += timedelta(minutes=SLOT_MINUTES)
+        current += timedelta(minutes=30)
 
     return slots
+
+
+@app.route('/api/slots')
+def api_slots():
+    service = get_service()
+    if not service:
+        return jsonify({'error': '認証が必要です'}), 401
+    duration = request.args.get('duration', 30, type=int)
+    if duration not in [30, 60, 90]:
+        return jsonify({'error': '無効な時間枠です'}), 400
+    try:
+        slots = get_free_slots(service, slot_minutes=duration)
+        grouped = {}
+        for s in slots:
+            d = s['date']
+            if d not in grouped:
+                grouped[d] = {'label': s['date_label'], 'slots': []}
+            grouped[d]['slots'].append(s)
+        return jsonify({'grouped': grouped})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/')
