@@ -3,6 +3,8 @@ import json
 import base64
 import tempfile
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from urllib.parse import quote
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
@@ -70,13 +72,33 @@ def _build_gmail_service():
     return build('gmail', 'v1', credentials=creds)
 
 
-def _send_mail(gmail, to, subject, body):
-    msg = MIMEText(body, 'plain', 'utf-8')
-    msg['To'] = to
-    msg['From'] = OWNER_EMAIL
-    msg['Subject'] = subject
+def _send_mail(gmail, to, subject, body_text, body_html=None):
+    if body_html:
+        msg = MIMEMultipart('alternative')
+        msg['To'] = to
+        msg['From'] = OWNER_EMAIL
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
+        msg.attach(MIMEText(body_html, 'html', 'utf-8'))
+    else:
+        msg = MIMEText(body_text, 'plain', 'utf-8')
+        msg['To'] = to
+        msg['From'] = OWNER_EMAIL
+        msg['Subject'] = subject
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
     gmail.users().messages().send(userId='me', body={'raw': raw}).execute()
+
+
+def _make_gcal_url(start_iso, end_iso, title, details, location=''):
+    start_utc = datetime.fromisoformat(start_iso).astimezone(ZoneInfo('UTC')).strftime('%Y%m%dT%H%M%SZ')
+    end_utc = datetime.fromisoformat(end_iso).astimezone(ZoneInfo('UTC')).strftime('%Y%m%dT%H%M%SZ')
+    return (
+        'https://calendar.google.com/calendar/render?action=TEMPLATE'
+        f'&text={quote(title)}'
+        f'&dates={start_utc}/{end_utc}'
+        f'&details={quote(details)}'
+        f'&location={quote(location)}'
+    )
 
 
 def _format_time_range(start_iso, end_iso):
@@ -119,20 +141,60 @@ def send_confirmation_email(name, email, purpose, start_iso, end_iso, meet_url=N
             return
         gmail = _build_gmail_service()
         time_range = _format_time_range(start_iso, end_iso)
-        meeting_line = f'形式：オンライン（Google Meet）\nMeetリンク：{meet_url}\n' if meet_url else '形式：対面\n'
+
+        if meet_url:
+            meeting_text = f'形式：オンライン（Google Meet）\nMeetリンク：{meet_url}\n'
+            meeting_html = f'<p>形式：オンライン（Google Meet）<br>Meetリンク：<a href="{meet_url}">{meet_url}</a></p>'
+            gcal_location = meet_url
+        else:
+            meeting_text = '形式：対面\n'
+            meeting_html = '<p>形式：対面</p>'
+            gcal_location = ''
+
+        gcal_title = f'[予約] {name} さんとのMTG'
+        gcal_details = f'目的: {purpose}\n担当: {OWNER_NAME}' + (f'\nGoogle Meet: {meet_url}' if meet_url else '')
+        gcal_url = _make_gcal_url(start_iso, end_iso, gcal_title, gcal_details, gcal_location)
 
         subject = f'【日程確定】{time_range}｜{OWNER_NAME}'
-        body = (
+
+        body_text = (
             f'{name} 様\n\n'
             f'日程調整にご協力いただきありがとうございます。\n'
             f'下記の日程で確定しましたのでお知らせいたします。\n\n'
             f'日時：{time_range}\n'
-            f'{meeting_line}'
+            f'{meeting_text}'
             f'担当：{OWNER_NAME}\n\n'
+            f'Googleカレンダーへの登録はこちら：\n{gcal_url}\n\n'
             f'ご不明な点がございましたら、このメールにご返信ください。\n\n'
             f'{OWNER_NAME}'
         )
-        _send_mail(gmail, email, subject, body)
+
+        body_html = f'''<!DOCTYPE html>
+<html><body style="font-family:sans-serif;color:#222;max-width:560px;margin:0 auto;padding:24px;">
+<p>{name} 様</p>
+<p>日程調整にご協力いただきありがとうございます。<br>
+下記の日程で確定しましたのでお知らせいたします。</p>
+<table style="border-collapse:collapse;margin:20px 0;width:100%;">
+  <tr><td style="padding:10px 16px;background:#f5f5f5;font-weight:700;width:30%;">日時</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;">{time_range}</td></tr>
+  <tr><td style="padding:10px 16px;background:#f5f5f5;font-weight:700;">形式</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;">{"オンライン（Google Meet）" if meet_url else "対面"}</td></tr>
+  <tr><td style="padding:10px 16px;background:#f5f5f5;font-weight:700;">担当</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;">{OWNER_NAME}</td></tr>
+  {"<tr><td style='padding:10px 16px;background:#f5f5f5;font-weight:700;'>Meetリンク</td><td style='padding:10px 16px;border-bottom:1px solid #eee;'><a href='" + meet_url + "'>" + meet_url + "</a></td></tr>" if meet_url else ""}
+</table>
+<p style="margin:28px 0;">
+  <a href="{gcal_url}"
+     style="display:inline-block;padding:12px 24px;background:#1a73e8;color:#fff;
+            text-decoration:none;border-radius:6px;font-size:14px;font-weight:700;">
+    Googleカレンダーに登録する
+  </a>
+</p>
+<p style="color:#888;font-size:13px;">ご不明な点がございましたら、このメールにご返信ください。</p>
+<p>{OWNER_NAME}</p>
+</body></html>'''
+
+        _send_mail(gmail, email, subject, body_text, body_html)
         print(f'[確認メール] 送信成功: {email}')
     except Exception as e:
         print(f'[確認メール] 送信エラー: {e}')
@@ -299,7 +361,7 @@ def api_book():
 
     try:
         created = service.events().insert(
-            calendarId='primary', body=event, sendUpdates='all',
+            calendarId='primary', body=event, sendUpdates='none',
             conferenceDataVersion=1 if is_online else 0).execute()
 
         meet_url = None
