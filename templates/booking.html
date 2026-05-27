@@ -102,6 +102,7 @@ function selectSlot(btn) {
   document.getElementById('selected-label').textContent = btn.dataset.label;
   document.getElementById('selected-info').style.display = 'block';
   document.getElementById('confirm-form').style.display = 'block';
+  document.getElementById('confirm-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function clearSlot() {
