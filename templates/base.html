@@ -6,26 +6,26 @@
 <title>{% block title %}日程調整ツール{% endblock %}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #f7f7f7; color: #333; }
-  .header { background: #1a1a1a; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #f0f4f8; color: #1e293b; }
+  .header { background: #1e3a5f; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
   .header h1 { font-size: 18px; font-weight: 600; }
-  .header nav a { color: #ccc; text-decoration: none; font-size: 14px; margin-left: 20px; }
+  .header nav a { color: #93c5fd; text-decoration: none; font-size: 14px; margin-left: 20px; }
   .header nav a:hover { color: #fff; }
   .container { max-width: 900px; margin: 32px auto; padding: 0 20px; }
-  .card { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 2px 8px rgba(30,58,95,0.08); margin-bottom: 20px; }
   .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
-  .btn-primary { background: #1a1a1a; color: #fff; }
-  .btn-primary:hover { background: #333; }
-  .btn-secondary { background: #f0f0f0; color: #333; }
-  .btn-secondary:hover { background: #e0e0e0; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
   .btn-green { background: #16a34a; color: #fff; }
   .btn-green:hover { background: #15803d; }
   .alert { padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
   .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-  .alert-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555; }
-  input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-  input:focus, textarea:focus { outline: none; border-color: #1a1a1a; }
+  .alert-success { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #475569; }
+  input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
   .form-group { margin-bottom: 16px; }
 </style>
 <style>{% block extra_style %}{% endblock %}</style>

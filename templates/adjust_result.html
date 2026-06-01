@@ -2,16 +2,18 @@
 {% block title %}{{ event['title'] }} — 集計結果{% endblock %}
 {% block extra_style %}
 .result-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
-.result-table th { background:#1a1a1a; color:#fff; padding:8px 10px; text-align:center; white-space:nowrap; }
-.result-table td { padding:8px 10px; border-bottom:1px solid #eee; text-align:center; white-space:nowrap; }
-.result-table tr.all-ok td { background:#e8f5e9; font-weight:700; }
+.result-table th { background:#1e3a5f; color:#fff; padding:10px 12px; text-align:center; white-space:nowrap; }
+.result-table td { padding:9px 12px; border-bottom:1px solid #e2e8f0; text-align:center; white-space:nowrap; }
+.result-table tr.all-ok { background:#eff6ff; }
+.result-table tr.all-ok td { font-weight:700; color:#1e3a5f; border-bottom:1px solid #bfdbfe; }
+.result-table tr.all-ok td.time-col { border-left:4px solid #2563eb; padding-left:10px; }
 .result-table td.time-col { text-align:left; }
-.circle { color:#22a; font-size:16px; }
-.count-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:700; }
-.all-badge { background:#2e7d32; color:#fff; }
-.some-badge { background:#e0e0e0; color:#555; }
-.share-box { background:#f5f5f5; border-radius:8px; padding:14px; margin-bottom:20px; }
-.share-url { font-size:12px; color:#1a73e8; word-break:break-all; }
+.circle { color:#2563eb; font-size:16px; }
+.count-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; }
+.all-badge { background:#2563eb; color:#fff; box-shadow:0 1px 4px rgba(37,99,235,0.25); }
+.some-badge { background:#e2e8f0; color:#475569; }
+.share-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px; margin-bottom:20px; }
+.share-url { font-size:12px; color:#2563eb; word-break:break-all; }
 {% endblock %}
 {% block content %}
 <div class="card" style="max-width:900px;">

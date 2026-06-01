@@ -2,24 +2,24 @@
 {% block title %}{{ owner }} の予約 — 日程調整{% endblock %}
 {% block extra_style %}
 .slot-btn { display:inline-block; padding:8px 14px; margin:4px; border-radius:8px;
-  background:#f0f0f0; border:2px solid transparent; cursor:pointer; font-size:14px; }
-.slot-btn:hover { background:#e0e0e0; }
-.slot-btn.selected { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+  background:#f1f5f9; border:2px solid transparent; cursor:pointer; font-size:14px; transition:all 0.15s; }
+.slot-btn:hover { background:#e2e8f0; border-color:#93c5fd; }
+.slot-btn.selected { background:#2563eb; color:#fff; border-color:#2563eb; }
 .date-section { margin-bottom:20px; }
-.date-label { font-size:14px; font-weight:700; color:#555; margin-bottom:8px; }
+.date-label { font-size:14px; font-weight:700; color:#475569; margin-bottom:8px; }
 #slot-section { display:none; }
 #confirm-form { display:none; }
 .duration-group { display:flex; gap:12px; margin:20px 0; }
-.duration-btn { flex:1; padding:14px; border-radius:8px; border:2px solid #e0e0e0;
+.duration-btn { flex:1; padding:14px; border-radius:8px; border:2px solid #e2e8f0;
   background:#fff; cursor:pointer; font-size:15px; text-align:center; transition:all 0.15s; }
-.duration-btn:hover { border-color:#aaa; }
-.duration-btn.selected { border-color:#1a1a1a; background:#1a1a1a; color:#fff; }
+.duration-btn:hover { border-color:#93c5fd; }
+.duration-btn.selected { border-color:#2563eb; background:#2563eb; color:#fff; }
 .meeting-type-group { display:flex; gap:12px; margin-top:4px; }
-.meeting-type-btn { flex:1; padding:12px; border-radius:8px; border:2px solid #e0e0e0;
+.meeting-type-btn { flex:1; padding:12px; border-radius:8px; border:2px solid #e2e8f0;
   background:#fff; cursor:pointer; font-size:14px; text-align:center; transition:all 0.15s; }
-.meeting-type-btn:hover { border-color:#aaa; }
-.meeting-type-btn.selected { border-color:#1a1a1a; background:#1a1a1a; color:#fff; }
-#loading { display:none; color:#888; font-size:14px; margin:12px 0; }
+.meeting-type-btn:hover { border-color:#93c5fd; }
+.meeting-type-btn.selected { border-color:#2563eb; background:#2563eb; color:#fff; }
+#loading { display:none; color:#64748b; font-size:14px; margin:12px 0; }
 {% endblock %}
 {% block content %}
 

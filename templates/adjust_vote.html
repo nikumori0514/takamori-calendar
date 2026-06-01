@@ -2,14 +2,14 @@
 {% block title %}{{ event['title'] }} — 候補日回答{% endblock %}
 {% block extra_style %}
 .slot-row { display:flex; align-items:center; padding:10px 14px; border-radius:8px;
-  margin:4px 0; border:2px solid #e0e0e0; cursor:pointer; transition:all 0.15s; user-select:none; }
-.slot-row:hover { border-color:#aaa; background:#f9f9f9; }
-.slot-row.checked { border-color:#1a1a1a; background:#1a1a1a; color:#fff; }
+  margin:4px 0; border:2px solid #e2e8f0; cursor:pointer; transition:all 0.15s; user-select:none; background:#fff; }
+.slot-row:hover { border-color:#93c5fd; background:#f0f4f8; }
+.slot-row.checked { border-color:#2563eb; background:#2563eb; color:#fff; }
 .slot-row input { display:none; }
-.date-label { font-size:13px; font-weight:700; color:#555; margin:16px 0 6px; }
+.date-label { font-size:13px; font-weight:700; color:#475569; margin:16px 0 6px; }
 .slot-row.checked .date-label { color:#fff; }
-.respondents { font-size:12px; color:#aaa; margin-left:auto; }
-.slot-row.checked .respondents { color:#ccc; }
+.respondents { font-size:12px; color:#94a3b8; margin-left:auto; }
+.slot-row.checked .respondents { color:#bfdbfe; }
 {% endblock %}
 {% block content %}
 <div class="card">
