@@ -441,6 +441,12 @@ def api_book():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/message')
+def message():
+    authenticated = get_service() is not None
+    return render_template('message.html', owner=OWNER_NAME, authenticated=authenticated)
+
+
 @app.route('/adjust/new', methods=['GET', 'POST'])
 def adjust_new():
     service = get_service()

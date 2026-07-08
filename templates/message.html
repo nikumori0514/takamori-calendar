@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}候補日メッセージ作成 — 日程調整{% endblock %}
+{% block extra_style %}
+.slot-btn { display:inline-block; padding:8px 14px; margin:4px; border-radius:8px;
+  background:#f1f5f9; border:2px solid transparent; cursor:pointer; font-size:14px; transition:all 0.15s; }
+.slot-btn:hover { background:#e2e8f0; border-color:#93c5fd; }
+.slot-btn.selected { background:#2563eb; color:#fff; border-color:#2563eb; }
+.date-section { margin-bottom:20px; }
+.date-label { font-size:14px; font-weight:700; color:#475569; margin-bottom:8px; }
+#loading { color:#64748b; font-size:14px; margin:12px 0; }
+#output-box { display:none; }
+#output-text { min-height:120px; font-family:inherit; white-space:pre-wrap; }
+{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2 style="font-size:20px;margin-bottom:6px;">候補日メッセージ作成</h2>
+  <p style="font-size:13px;color:#888;margin-bottom:20px;">送りたい空き時間にチェックを入れて「文章を生成」を押してください。</p>
+
+  {% if not authenticated %}
+  <div class="alert alert-error">⚠️ Googleカレンダーと未接続です。まず<a href="/auth/login">ログイン</a>してください。</div>
+  {% else %}
+
+  <div id="loading">空き時間を取得中...</div>
+  <div id="slot-list"></div>
+
+  <div class="form-group" style="margin-top:24px;">
+    <label>冒頭文</label>
+    <input type="text" id="intro-text" value="以下の候補日程でいかがでしょうか？">
+  </div>
+
+  <button class="btn btn-primary" onclick="generateMessage()" style="width:100%;padding:14px;">
+    文章を生成する
+  </button>
+
+  <div id="output-box" style="margin-top:20px;">
+    <label>生成された文章</label>
+    <textarea id="output-text" readonly rows="6"></textarea>
+    <button class="btn btn-green" onclick="copyMessage()" style="margin-top:10px;width:100%;padding:12px;">
+      コピーする
+    </button>
+  </div>
+
+  {% endif %}
+</div>
+
+<script>
+async function loadSlots() {
+  try {
+    const res = await fetch('/api/slots?duration=30');
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('loading').textContent = 'エラー: ' + data.error;
+      return;
+    }
+    const grouped = data.grouped;
+    const keys = Object.keys(grouped);
+    if (keys.length === 0) {
+      document.getElementById('slot-list').innerHTML = '<p style="color:#888;font-size:14px;">今後2週間で空き時間がありません。</p>';
+    } else {
+      document.getElementById('slot-list').innerHTML = keys.map(date => `
+        <div class="date-section">
+          <div class="date-label">${formatDateLabel(date)}</div>
+          <div>${grouped[date].slots.map(s => `
+            <button type="button" class="slot-btn" data-date="${date}" data-time="${s.time}" onclick="toggleSlot(this)">${s.time}</button>
+          `).join('')}</div>
+        </div>
+      `).join('');
+    }
+    document.getElementById('loading').style.display = 'none';
+  } catch (e) {
+    document.getElementById('loading').textContent = '通信エラーが発生しました';
+  }
+}
+
+function formatDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const wd = ['日','月','火','水','木','金','土'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${m}月${d}日（${wd}）`;
+}
+
+function toggleSlot(btn) {
+  btn.classList.toggle('selected');
+}
+
+function generateMessage() {
+  const selected = Array.from(document.querySelectorAll('.slot-btn.selected'));
+  if (selected.length === 0) {
+    alert('候補にする時間を選んでください');
+    return;
+  }
+
+  const byDate = {};
+  const order = [];
+  selected.forEach(btn => {
+    const date = btn.dataset.date;
+    if (!byDate[date]) { byDate[date] = []; order.push(date); }
+    byDate[date].push(btn.dataset.time);
+  });
+  order.sort();
+
+  const intro = document.getElementById('intro-text').value.trim();
+  const lines = order.map(date => `${formatDateLabel(date)}${byDate[date].join('｜')}`);
+  const text = (intro ? intro + '\n' : '') + lines.join('\n');
+
+  document.getElementById('output-text').value = text;
+  document.getElementById('output-box').style.display = 'block';
+  document.getElementById('output-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyMessage() {
+  const el = document.getElementById('output-text');
+  navigator.clipboard.writeText(el.value).then(() => {
+    alert('コピーしました');
+  });
+}
+
+loadSlots();
+</script>
+{% endblock %}
