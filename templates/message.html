@@ -47,7 +47,7 @@
 <script>
 async function loadSlots() {
   try {
-    const res = await fetch('/api/slots?duration=30');
+    const res = await fetch('/api/slots?duration=60');
     const data = await res.json();
     if (data.error) {
       document.getElementById('loading').textContent = 'エラー: ' + data.error;
